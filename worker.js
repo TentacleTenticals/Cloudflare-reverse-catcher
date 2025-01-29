@@ -3,16 +3,22 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, Url, Method, Type"
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Url"
     };
 
-    const url = req.headers.get('Url') && req.headers.get('Url');
-    const method = req.headers.get('Method') && req.headers.get('Method');
-    const auth = req.headers.get('Authorization') && req.headers.get('Authorization');
-    // const info = req.get('Info') && JSON.parse(req.get('Info'));
-    const json = method && method.match(/POST|PUT/) && await req.json();
-    // const qq = await req.text();
-    // const data = json && new URLSearchParams(json);
+    const cType = req.headers.get('Content-Type');
+    const url = req.headers.get('Url');
+    const auth = req.headers.get('Authorization');
+    const dataType = async () => {
+      if(!cType) return;
+      if(req.body) switch(cType){
+        case 'application/json': return await req.json();
+        case 'application/text': return await req.json();
+        case 'text/html': return req.text();
+        default: return req.text();
+      }
+    };
+    const data = await dataType();
 
     if(req.method.match(/OPTIONS/)){
       return new Response(null, {headers: {
@@ -21,18 +27,13 @@ export default {
       }})
     };
 
-    // console.log('BODY', req.body);
-
-    // console.log('JSON', json);
-    // console.log('Data', data);
-
     return fetch(url||'https://www.example.com', {
-      method: method||'GET',
+      method: req.method,
       headers: {
-        // ...cors,
+        ...(cType) && {'Content-Type': cType},
         ...(auth) && {Authorization: auth}
       },
-      ...(json) && {body: new URLSearchParams(json)/*JSON.stringify(data)*//*.toString()*/}
+      ...(data) && {body: data}
     }).then(r => r.json().then(
       res => {
         return Response.json(res, {headers: {...cors}});
